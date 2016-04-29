@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Charge Reminder</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="charge_start_time_label">Charge Start Time</string>
+    <string name="charge_start_time_current">10:00 PM</string>
+    <string name="charge_stop_time_label">Charge Stop Time</string>
+    <string name="charge_stop_time_current">6:00 AM</string>
+    <string name="battery_check_interval_label">Check every</string>
+    <string name="battery_check_interval_current">30 minutes</string>
+</resources>
