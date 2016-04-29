@@ -35,7 +35,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="SET"
-            android:id="@+id/set_start_time_button" />
+            android:id="@+id/set_start_time_button"
+            android:onClick="showTimePickerDialog"/>
 
 
     </TableRow>
@@ -62,7 +63,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="SET"
-            android:id="@+id/set_stop_time_button"/>
+            android:id="@+id/set_stop_time_button"
+            android:onClick="showTimePickerDialog"/>
 
     </TableRow>
 
@@ -88,7 +90,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="SET"
-            android:id="@+id/set_check_interval_button"/>
+            android:id="@+id/set_check_interval_button"
+            android:onClick="showIntervalPickerDialog"/>
 
     </TableRow>
 
