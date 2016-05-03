@@ -6,22 +6,27 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Binder;
 import android.os.IBinder;
+import android.os.Vibrator;
 import android.support.annotation.Nullable;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Calendar;
 
 public class BatteryCheckerService extends Service {
 
     public java.sql.Time mChargeStartTime;
     public java.sql.Time mChargeStopTime;
-    //TODO: Only attempt send notifications at an interval the user defines
-    public int mCheckInterval;
+    public BroadcastReceiver mBatInfoReceiver;
+    public long mCheckInterval;
+    private long mLastNotificationTime;
     private BigDecimal mExpectedLevel;
 
     private final IBinder mBinder = new LocalBinder();
@@ -31,11 +36,22 @@ public class BatteryCheckerService extends Service {
         super.onCreate();
 
         mExpectedLevel = new BigDecimal(0);
-        mChargeStartTime = new java.sql.Time(System.currentTimeMillis());
-        mChargeStopTime = new java.sql.Time(System.currentTimeMillis());
+        mCheckInterval = 30*60*1000;
+
+        Calendar convertStopToMs = Calendar.getInstance();
+        convertStopToMs.set(Calendar.HOUR_OF_DAY, 6);
+        convertStopToMs.set(Calendar.MINUTE, 0);
+
+        Calendar convertStartToMs = Calendar.getInstance();
+        convertStartToMs.set(Calendar.HOUR_OF_DAY, 22);
+        convertStartToMs.set(Calendar.MINUTE, 0);
+
+        mChargeStartTime = new java.sql.Time(convertStartToMs.getTimeInMillis());
+        mChargeStopTime = new java.sql.Time(convertStopToMs.getTimeInMillis());
+        mLastNotificationTime = mChargeStopTime.getTime();
 
         //Set up a BroadcastReceiver that checks battery level and charging status when battery level changes
-        BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver(){
+        mBatInfoReceiver = new BroadcastReceiver(){
             @Override
             public void onReceive(Context context, Intent intent) {
                 long timeBetweenCharges = mChargeStartTime.getTime() - mChargeStopTime.getTime();
@@ -44,7 +60,6 @@ public class BatteryCheckerService extends Service {
                     timeElapsed = System.currentTimeMillis() -  mChargeStopTime.getTime();
                     BigDecimal timeElapsedBd = new BigDecimal(timeElapsed);
                     BigDecimal timeBetweenChargesBd = new BigDecimal(timeBetweenCharges);
-//                    mExpectedLevel = (timeElapsed / timeBetweenCharges);
                     mExpectedLevel = new BigDecimal(1).subtract(timeElapsedBd.divide(timeBetweenChargesBd, 3, RoundingMode.CEILING));
                 }
                 int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
@@ -56,8 +71,10 @@ public class BatteryCheckerService extends Service {
                 //If battery is not charging, compare level to expected level
                 if (!isCharging) {
                     boolean needsCharging = compareToExpectedLevel(currentBatteryLevel);
-                    if (!needsCharging) {
+                    boolean recentlyNotified = compareToCheckInterval(System.currentTimeMillis());
+                    if (needsCharging && !recentlyNotified) {
                         sendNotification();
+                        mLastNotificationTime = System.currentTimeMillis();
                     }
                 }
             }
@@ -65,6 +82,12 @@ public class BatteryCheckerService extends Service {
 
         registerReceiver(mBatInfoReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
 
+    }
+
+    @Override
+    public void onDestroy() {
+        unregisterReceiver(mBatInfoReceiver);
+        super.onDestroy();
     }
 
     public boolean compareToExpectedLevel(BigDecimal level) {
@@ -80,12 +103,23 @@ public class BatteryCheckerService extends Service {
         }
     }
 
+    public boolean compareToCheckInterval(long currentTime) {
+        long timeSinceNotification = currentTime - mLastNotificationTime;
+        return (timeSinceNotification <= mCheckInterval);
+    }
+
     public void sendNotification() {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext());
+
+        Uri notificationSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
 
         builder.setSmallIcon(R.drawable.ic_notification_icon);
         builder.setContentTitle("Charge your phone!");
         builder.setContentText("Your phone's battery level is below its expected value!");
+        builder.setSound(notificationSound);
+        //can't find this int...
+        final int DEFAULT_SOUND = 2;
+        builder.setDefaults(DEFAULT_SOUND);
 
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 

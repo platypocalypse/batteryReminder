@@ -1,5 +1,6 @@
 package patabase.chargereminder;
 
+import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.TimePickerDialog;
 import android.content.ComponentName;
@@ -11,16 +12,18 @@ import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.NumberPicker;
 import android.widget.TextView;
 import android.widget.TimePicker;
 
 import java.util.Calendar;
 
-public class MainActivity extends AppCompatActivity implements TimePickerDialog.OnTimeSetListener{
+public class MainActivity extends AppCompatActivity implements
+        TimePickerDialog.OnTimeSetListener,
+        NumberPicker.OnValueChangeListener {
 
     private TextView mCurrentStartTime;
     private TextView mCurrentStopTime;
@@ -46,16 +49,62 @@ public class MainActivity extends AppCompatActivity implements TimePickerDialog.
 
     }
 
+    @Override
+    protected void onDestroy() {
+        unbindService(BatteryCheckerServiceConnection);
+        super.onDestroy();
+    }
+
+    public void showIntervalPickerDialog(View v) {
+
+        final Dialog dialog = new Dialog(MainActivity.this);
+        dialog.setTitle("NumberPicker");
+        dialog.setContentView(R.layout.dialog_number_picker);
+
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
+        lp.copyFrom(dialog.getWindow().getAttributes());
+        lp.width = WindowManager.LayoutParams.MATCH_PARENT;
+        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+
+        Button cancelButton = (Button) dialog.findViewById(R.id.button_cancel);
+        Button setButton = (Button) dialog.findViewById(R.id.button_set);
+        final NumberPicker numberPicker = (NumberPicker) dialog.findViewById(R.id.number_picker);
+        numberPicker.setMaxValue(60);
+        numberPicker.setMinValue(0);
+        numberPicker.setWrapSelectorWheel(false);
+        numberPicker.setOnValueChangedListener(this);
+
+        cancelButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        setButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                String text = String.valueOf(numberPicker.getValue()) + " minutes";
+                mCurrentCheckInterval.setText(text);
+                int newInterval = numberPicker.getValue() * 60 * 1000;
+                mBatteryCheckerService.mCheckInterval = newInterval;
+                dialog.dismiss();
+            }
+        });
+        dialog.show();
+        dialog.getWindow().setAttributes(lp);
+    }
+
+    @Override
+    public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
+        //auto generated stub
+    }
+
     public void showTimePickerDialog(View v) {
         mSelectedView = v;
         DialogFragment newFragment = new TimePickerFragment();
         newFragment.show(getFragmentManager(), "timePicker");
-    }
-
-    public void showIntervalPickerDialog(View v) {
-//        mSelectedView = v;
-//        DialogFragment newFragment = new TimePickerFragment();
-//        newFragment.show(getFragmentManager(), "timePicker");
     }
 
     @Override
@@ -86,8 +135,8 @@ public class MainActivity extends AppCompatActivity implements TimePickerDialog.
                 break;
             case R.id.set_stop_time_button:
                 Calendar convertStopToMs = Calendar.getInstance();
-                convertStopToMs.set(Calendar.HOUR_OF_DAY, 6);
-                convertStopToMs.set(Calendar.MINUTE,0);
+                convertStopToMs.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                convertStopToMs.set(Calendar.MINUTE,minute);
                 mBatteryCheckerService.mChargeStopTime.setTime(convertStopToMs.getTimeInMillis());
                 mCurrentStopTime.setText(text);
                 break;
