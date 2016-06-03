@@ -1,8 +1,11 @@
 package patabase.chargereminder;
 
+import android.app.AlarmManager;
 import android.app.Dialog;
 import android.app.DialogFragment;
+import android.app.PendingIntent;
 import android.app.TimePickerDialog;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -19,6 +22,7 @@ import android.widget.NumberPicker;
 import android.widget.TextView;
 import android.widget.TimePicker;
 
+import java.math.BigDecimal;
 import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity implements
@@ -31,7 +35,10 @@ public class MainActivity extends AppCompatActivity implements
 
     private View mSelectedView;
 
-    private BatteryCheckerService mBatteryCheckerService;
+    private java.sql.Time mStartTime;
+    private java.sql.Time mStopTime;
+    private long mInterval;
+    private AlarmManager mAlarmManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,18 +47,33 @@ public class MainActivity extends AppCompatActivity implements
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        bindService(new Intent(this, BatteryCheckerService.class), BatteryCheckerServiceConnection, Context.BIND_AUTO_CREATE);
-
         mCurrentStartTime = (TextView) findViewById(R.id.current_start_time_textview);
         mCurrentStopTime = (TextView) findViewById(R.id.current_stop_time_textview);
         mCurrentCheckInterval = (TextView) findViewById(R.id.current_check_interval_textview);
 
+        //Initialize values for first launch
+        Calendar convertStopToMs = Calendar.getInstance();
+        convertStopToMs.set(Calendar.HOUR_OF_DAY, 6);
+        convertStopToMs.set(Calendar.MINUTE, 0);
+        mStopTime = new java.sql.Time(convertStopToMs.getTimeInMillis());
+        Calendar convertStartToMs = Calendar.getInstance();
+        convertStartToMs.set(Calendar.HOUR_OF_DAY, 22);
+        convertStartToMs.set(Calendar.MINUTE, 0);
+        mStartTime = new java.sql.Time(convertStartToMs.getTimeInMillis());
+        mInterval = 5000;
 
+        //Set first alarm
+        updateAlarmParameters();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateAlarmParameters();
     }
 
     @Override
     protected void onDestroy() {
-        unbindService(BatteryCheckerServiceConnection);
         super.onDestroy();
     }
 
@@ -88,7 +110,9 @@ public class MainActivity extends AppCompatActivity implements
                 String text = String.valueOf(numberPicker.getValue()) + " minutes";
                 mCurrentCheckInterval.setText(text);
                 int newInterval = numberPicker.getValue() * 60 * 1000;
-                mBatteryCheckerService.mCheckInterval = newInterval;
+//                mBatteryCheckerService.mCheckInterval = newInterval;
+                mInterval = newInterval;
+                updateAlarmParameters();
                 dialog.dismiss();
             }
         });
@@ -130,30 +154,35 @@ public class MainActivity extends AppCompatActivity implements
                 convertStartToMs.setTimeInMillis(System.currentTimeMillis());
                 convertStartToMs.set(Calendar.HOUR_OF_DAY, hourOfDay);
                 convertStartToMs.set(Calendar.MINUTE, minute);
-                mBatteryCheckerService.mChargeStartTime.setTime(convertStartToMs.getTimeInMillis());
+//                mBatteryCheckerService.mChargeStartTime.setTime(convertStartToMs.getTimeInMillis());
+                mStartTime.setTime(convertStartToMs.getTimeInMillis());
                 mCurrentStartTime.setText(text);
+                updateAlarmParameters();
                 break;
             case R.id.set_stop_time_button:
                 Calendar convertStopToMs = Calendar.getInstance();
                 convertStopToMs.set(Calendar.HOUR_OF_DAY, hourOfDay);
                 convertStopToMs.set(Calendar.MINUTE,minute);
-                mBatteryCheckerService.mChargeStopTime.setTime(convertStopToMs.getTimeInMillis());
+//                mBatteryCheckerService.mChargeStopTime.setTime(convertStopToMs.getTimeInMillis());
+                mStopTime.setTime(convertStopToMs.getTimeInMillis());
                 mCurrentStopTime.setText(text);
+                updateAlarmParameters();
                 break;
         }
         mSelectedView = null;
     }
 
-    private ServiceConnection BatteryCheckerServiceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            BatteryCheckerService.LocalBinder binder = (BatteryCheckerService.LocalBinder) service;
-            mBatteryCheckerService = binder.getService();
-        }
+    private void updateAlarmParameters() {
 
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            mBatteryCheckerService = null;
-        }
-    };
+        Intent checkBatteryLevel = new Intent(getApplicationContext(), BatteryCheckerTask.class);
+        checkBatteryLevel.putExtra("startTime", mStartTime.getTime());
+        checkBatteryLevel.putExtra("stopTime" ,mStopTime.getTime());
+        PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(),  0, checkBatteryLevel, 0);
+
+        mAlarmManager = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
+        mAlarmManager.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), mInterval, pendingIntent);
+
+    }
+
+
 }
