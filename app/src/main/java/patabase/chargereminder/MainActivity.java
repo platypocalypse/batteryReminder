@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity implements
         convertStartToMs.set(Calendar.HOUR_OF_DAY, 22);
         convertStartToMs.set(Calendar.MINUTE, 0);
         mStartTime = new java.sql.Time(convertStartToMs.getTimeInMillis());
-        mInterval = 5000;
+        mInterval = 30 * 60 * 1000;
 
         //Set first alarm
         updateAlarmParameters();
@@ -110,7 +110,6 @@ public class MainActivity extends AppCompatActivity implements
                 String text = String.valueOf(numberPicker.getValue()) + " minutes";
                 mCurrentCheckInterval.setText(text);
                 int newInterval = numberPicker.getValue() * 60 * 1000;
-//                mBatteryCheckerService.mCheckInterval = newInterval;
                 mInterval = newInterval;
                 updateAlarmParameters();
                 dialog.dismiss();
@@ -154,7 +153,6 @@ public class MainActivity extends AppCompatActivity implements
                 convertStartToMs.setTimeInMillis(System.currentTimeMillis());
                 convertStartToMs.set(Calendar.HOUR_OF_DAY, hourOfDay);
                 convertStartToMs.set(Calendar.MINUTE, minute);
-//                mBatteryCheckerService.mChargeStartTime.setTime(convertStartToMs.getTimeInMillis());
                 mStartTime.setTime(convertStartToMs.getTimeInMillis());
                 mCurrentStartTime.setText(text);
                 updateAlarmParameters();
@@ -163,7 +161,6 @@ public class MainActivity extends AppCompatActivity implements
                 Calendar convertStopToMs = Calendar.getInstance();
                 convertStopToMs.set(Calendar.HOUR_OF_DAY, hourOfDay);
                 convertStopToMs.set(Calendar.MINUTE,minute);
-//                mBatteryCheckerService.mChargeStopTime.setTime(convertStopToMs.getTimeInMillis());
                 mStopTime.setTime(convertStopToMs.getTimeInMillis());
                 mCurrentStopTime.setText(text);
                 updateAlarmParameters();
@@ -177,7 +174,7 @@ public class MainActivity extends AppCompatActivity implements
         Intent checkBatteryLevel = new Intent(getApplicationContext(), BatteryCheckerTask.class);
         checkBatteryLevel.putExtra("startTime", mStartTime.getTime());
         checkBatteryLevel.putExtra("stopTime" ,mStopTime.getTime());
-        PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(),  0, checkBatteryLevel, 0);
+        PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(),  0, checkBatteryLevel, PendingIntent.FLAG_CANCEL_CURRENT);
 
         mAlarmManager = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
         mAlarmManager.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), mInterval, pendingIntent);

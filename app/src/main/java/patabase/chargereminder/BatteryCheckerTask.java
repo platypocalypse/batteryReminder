@@ -10,7 +10,6 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.BatteryManager;
 import android.support.v7.app.NotificationCompat;
-import android.util.Log;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -72,10 +71,8 @@ public class BatteryCheckerTask extends IntentService {
         int expectedLevel = (mExpectedLevel.multiply(new BigDecimal(100))).intValue();
         int levelConverted = (level.multiply(new BigDecimal(100))).intValue();
         if (levelConverted < expectedLevel) {
-            Log.d("tag", "Charge your phone!");
             return true;
         } else {
-            Log.d("tag", "Don't charge your phone!");
             return false;
         }
     }
